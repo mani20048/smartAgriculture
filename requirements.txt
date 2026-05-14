@@ -14,3 +14,4 @@ googletrans==4.0.0rc1
 plotly==5.18.0
 python-dotenv==1.2.2
 django-allauth[socialaccount]==65.16.1
+gunicorn==22.0.0
