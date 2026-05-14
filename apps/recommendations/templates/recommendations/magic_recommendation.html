@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Crop Recommendations - Magic Flow{% endblock %}
+
+{% block extra_css %}
+<style>
+    .magic-wizard {
+        transition: all 0.3s ease;
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-right: none;
+    }
+    .form-control:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+    }
+    .property-card {
+        border-radius: 1rem;
+        transition: transform 0.2s;
+    }
+    .property-card:hover {
+        transform: translateY(-2px);
+    }
+    .custom-range {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        border-radius: 5px;  
+        background: #e9ecef;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+    }
+    .custom-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%; 
+        background: var(--primary-color);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .custom-range::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .value-badge {
+        font-size: 1.2rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h2 class="mb-1">
+                    <i class="bi bi-magic text-warning"></i> 1-Click Magic Flow
+                </h2>
+                <p class="text-muted mb-0">AI-powered crop suggestions based on your field data.</p>
+            </div>
+            <div class="mt-2 mt-md-0">
+                <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <!-- Main Form Section -->
+    <div class="col-lg-8 col-xl-7 mb-4">
+        <div class="card dashboard-card magic-wizard shadow-lg border-0 border-top border-warning border-3">
+            <div class="card-header bg-white pb-0 border-0 pt-4 px-4">
+                <h4 class="mb-0 text-success"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Instant Analysis</h4>
+                <p class="text-muted">Enter your soil and weather details for a precise AI recommendation.</p>
+            </div>
+            <div class="card-body p-4">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" id="magicForm">
+                    {% csrf_token %}
+                    
+                    <!-- Step 1: Basic Info -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold h5 mb-3">
+                            <i class="bi bi-info-circle-fill text-primary me-2"></i>
+                            1. Basic Details
+                        </label>
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label for="{{ magic_form.farm_name.id_for_label }}" class="form-label text-muted small mb-1">Farm Name</label>
+                                {{ magic_form.farm_name }}
+                                {% if magic_form.farm_name.errors %}
+                                    <div class="text-danger small mt-1">{{ magic_form.farm_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-5">
+                                <label for="{{ magic_form.area.id_for_label }}" class="form-label text-muted small mb-1">Area (Hectares)</label>
+                                {{ magic_form.area }}
+                                {% if magic_form.area.errors %}
+                                    <div class="text-danger small mt-1">{{ magic_form.area.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Soil Properties -->
+                    <div class="mb-5">
+                        <label class="form-label fw-bold h5 mb-4">
+                            <i class="bi bi-moisture text-success me-2"></i>
+                            2. Soil Properties
+                        </label>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Nitrogen (N)</span>
+                                    <span class="badge bg-success value-badge" id="val_nitrogen">{{ magic_form.nitrogen.value|default:"0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.nitrogen.html_name }}" id="{{ magic_form.nitrogen.id_for_label }}" min="0" max="300" step="1" value="{{ magic_form.nitrogen.value|default:'0' }}" oninput="document.getElementById('val_nitrogen').innerText = this.value">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0</small><small class="text-muted">300</small></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Phosphorus (P)</span>
+                                    <span class="badge bg-success value-badge" id="val_phosphorus">{{ magic_form.phosphorus.value|default:"0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.phosphorus.html_name }}" id="{{ magic_form.phosphorus.id_for_label }}" min="0" max="300" step="1" value="{{ magic_form.phosphorus.value|default:'0' }}" oninput="document.getElementById('val_phosphorus').innerText = this.value">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0</small><small class="text-muted">300</small></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Potassium (K)</span>
+                                    <span class="badge bg-success value-badge" id="val_potassium">{{ magic_form.potassium.value|default:"0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.potassium.html_name }}" id="{{ magic_form.potassium.id_for_label }}" min="0" max="300" step="1" value="{{ magic_form.potassium.value|default:'0' }}" oninput="document.getElementById('val_potassium').innerText = this.value">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0</small><small class="text-muted">300</small></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>pH Level</span>
+                                    <span class="badge bg-warning text-dark value-badge" id="val_ph">{{ magic_form.ph.value|default:"7.0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.ph.html_name }}" id="{{ magic_form.ph.id_for_label }}" min="0" max="14" step="0.1" value="{{ magic_form.ph.value|default:'7.0' }}" oninput="document.getElementById('val_ph').innerText = parseFloat(this.value).toFixed(1)">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0 (Acidic)</small><small class="text-muted">14 (Alkaline)</small></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Weather Data -->
+                    <div class="mb-5">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <label class="form-label fw-bold h5 mb-0">
+                                <i class="bi bi-cloud-sun-fill text-info me-2"></i>
+                                3. Weather Conditions
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" id="auto-weather-btn">
+                                <i class="bi bi-geo-alt"></i> Auto-detect
+                            </button>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Temperature (°C)</span>
+                                    <span class="badge bg-danger value-badge" id="val_temperature">{{ magic_form.temperature.value|default:"25.0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.temperature.html_name }}" id="{{ magic_form.temperature.id_for_label }}" min="-10" max="50" step="0.1" value="{{ magic_form.temperature.value|default:'25.0' }}" oninput="document.getElementById('val_temperature').innerText = parseFloat(this.value).toFixed(1)">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">-10°C</small><small class="text-muted">50°C</small></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Humidity (%)</span>
+                                    <span class="badge bg-info value-badge" id="val_humidity">{{ magic_form.humidity.value|default:"50.0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.humidity.html_name }}" id="{{ magic_form.humidity.id_for_label }}" min="0" max="100" step="1" value="{{ magic_form.humidity.value|default:'50' }}" oninput="document.getElementById('val_humidity').innerText = this.value">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0%</small><small class="text-muted">100%</small></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small mb-2 d-flex justify-content-between align-items-center">
+                                    <span>Rainfall (mm)</span>
+                                    <span class="badge bg-primary value-badge" id="val_rainfall">{{ magic_form.rainfall.value|default:"100.0" }}</span>
+                                </label>
+                                <input type="range" class="form-range custom-range" name="{{ magic_form.rainfall.html_name }}" id="{{ magic_form.rainfall.id_for_label }}" min="0" max="500" step="1" value="{{ magic_form.rainfall.value|default:'100' }}" oninput="document.getElementById('val_rainfall').innerText = this.value">
+                                <div class="d-flex justify-content-between mt-1"><small class="text-muted">0mm</small><small class="text-muted">500mm</small></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid pt-3 border-top">
+                        <button type="submit" class="btn btn-warning btn-lg shadow-sm fw-bold" id="submitBtn">
+                            <i class="bi bi-magic me-2"></i> Predict Best Crops
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Sidebar -->
+    <div class="col-lg-4 col-xl-5 mb-4">
+        <div class="card dashboard-card border-0 shadow-sm bg-light">
+            <div class="card-header bg-primary text-white d-flex align-items-center border-0">
+                <i class="bi bi-info-circle-fill me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">How Magic Flow Works</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3 text-muted">A streamlined experience to get instant crop predictions without creating full farm profiles:</p>
+                <div class="list-group list-group-flush bg-transparent">
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-1-circle-fill text-primary me-2"></i>
+                        <strong>Input Soil Data</strong> (N, P, K and pH)
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-2-circle-fill text-info me-2"></i>
+                        <strong>Input Weather Data</strong> (Temp, Humidity, Rain)
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-3-circle-fill text-success me-2"></i>
+                        <strong>ML Analysis</strong> calculates the perfect crop matches
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-4-circle-fill text-warning me-2"></i>
+                        <strong>Instant Results</strong> with confidence scores
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3 border-0 shadow-sm">
+                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>
+                    <strong>Tip:</strong> You can find these values from your latest soil test report and local weather station.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('magicForm').addEventListener('submit', function() {
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Predicting...';
+        btn.disabled = true;
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const autoWeatherBtn = document.getElementById('auto-weather-btn');
+        if (autoWeatherBtn) {
+            autoWeatherBtn.addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    const originalText = autoWeatherBtn.innerHTML;
+                    autoWeatherBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Fetching...';
+                    autoWeatherBtn.disabled = true;
+
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        const formData = new FormData();
+                        formData.append('latitude', lat);
+                        formData.append('longitude', lon);
+                        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+                        fetch("{% url 'weather:weather_data_fetch_ajax' %}", {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update sliders
+                                if (data.data.temperature !== null && data.data.temperature !== undefined) {
+                                    const tempInput = document.getElementById('{{ magic_form.temperature.id_for_label }}');
+                                    tempInput.value = data.data.temperature;
+                                    document.getElementById('val_temperature').innerText = parseFloat(data.data.temperature).toFixed(1);
+                                }
+                                if (data.data.humidity !== null && data.data.humidity !== undefined) {
+                                    const humInput = document.getElementById('{{ magic_form.humidity.id_for_label }}');
+                                    humInput.value = data.data.humidity;
+                                    document.getElementById('val_humidity').innerText = parseFloat(data.data.humidity).toFixed(0);
+                                }
+                                if (data.data.rainfall !== null && data.data.rainfall !== undefined) {
+                                    const rainInput = document.getElementById('{{ magic_form.rainfall.id_for_label }}');
+                                    rainInput.value = data.data.rainfall;
+                                    document.getElementById('val_rainfall').innerText = parseFloat(data.data.rainfall).toFixed(0);
+                                }
+                            } else {
+                                alert('Could not fetch weather: ' + data.error);
+                            }
+                        })
+                        .catch(error => {
+                            alert('Error fetching weather data. Make sure your API key is configured.');
+                            console.error(error);
+                        })
+                        .finally(() => {
+                            autoWeatherBtn.innerHTML = originalText;
+                            autoWeatherBtn.disabled = false;
+                        });
+                    }, function(error) {
+                        alert("Geolocation failed: " + error.message);
+                        autoWeatherBtn.innerHTML = originalText;
+                        autoWeatherBtn.disabled = false;
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+

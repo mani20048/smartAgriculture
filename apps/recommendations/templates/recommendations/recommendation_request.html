@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Crop Recommendations - Crop Recommendation{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+    #map { height: 350px; width: 100%; border-radius: 0.5rem; }
+    .magic-wizard {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h2 class="mb-1">
+                    <i class="bi bi-magic text-warning"></i> 1-Click Magic Flow
+                </h2>
+                <p class="text-muted mb-0">AI-powered crop suggestions with automatic data fetching.</p>
+            </div>
+            <div class="mt-2 mt-md-0">
+                <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <!-- Main Form Section -->
+    <div class="col-lg-8 col-xl-7 mb-4">
+        <div class="card dashboard-card shadow-lg border-0 border-top border-success border-3">
+            <div class="card-header bg-white pb-0 border-0 pt-4 px-4">
+                <h4 class="mb-0 text-success"><i class="bi bi-gear-fill me-2"></i>Existing Farm Recommendations</h4>
+                <p class="text-muted">Get recommendations using your previously configured farm and field data.</p>
+            </div>
+            <div class="card-body p-4">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if form.farm.field.queryset.exists %}
+                    <form method="post" class="bg-light p-4 rounded border">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                             <div class="col-12">
+                                <label for="{{ form.farm.id_for_label }}" class="form-label fw-bold">Select Existing Farm</label>
+                                {{ form.farm }}
+                             </div>
+                             <div class="col-12">
+                                 <div class="form-check form-switch mt-2">
+                                     {{ form.include_weather }}
+                                     <label class="form-check-label fw-bold" for="{{ form.include_weather.id_for_label }}">Fetch current weather data</label>
+                                 </div>
+                                 <small class="text-muted d-block mt-1">If unchecked, models will use fallback or previously logged weather.</small>
+                             </div>
+                             <div class="col-12 mt-4 d-grid">
+                                <button type="submit" class="btn btn-success btn-lg shadow-sm">
+                                    <i class="bi bi-search me-2"></i> Get Recommendations
+                                </button>
+                             </div>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-journal-x text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3">No Farms Found</h5>
+                        <p class="text-muted">You haven't setup any farms yet. To get personalized crop recommendations for existing farms, please create one first.</p>
+                        <a href="{% url 'farms:farm_create' %}" class="btn btn-primary mt-2">
+                            <i class="bi bi-plus-circle me-1"></i> Create Farm
+                        </a>
+                    </div>
+                {% endif %}
+
+                <hr class="my-5">
+                <div class="text-center">
+                    <h5 class="text-muted mb-2">Want recommendations instantly?</h5>
+                    <p class="small text-muted mb-3">Skip creating a farm profile and get immediate insights.</p>
+                    <a href="{% url 'recommendations:magic' %}" class="btn btn-outline-warning">
+                        <i class="bi bi-magic me-1"></i> Try 1-Click Magic Flow
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Sidebar -->
+    <div class="col-lg-4 col-xl-5 mb-4">
+        <!-- About Recommendations Card -->
+        <div class="card dashboard-card border-0 shadow-sm bg-light">
+            <div class="card-header bg-primary text-white d-flex align-items-center border-0">
+                <i class="bi bi-info-circle-fill me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">How Magic Flow Works</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3 text-muted">We use multiple APIs to aggregate data for your location in real-time, completely bypassing manual forms:</p>
+                <div class="list-group list-group-flush bg-transparent">
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-1-circle-fill text-primary me-2"></i>
+                        <strong>GPS Coordinates</strong> passed directly via the Map
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-2-circle-fill text-info me-2"></i>
+                        <strong>Live Weather Data</strong> via OpenWeather API
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-3-circle-fill text-success me-2"></i>
+                        <strong>Satellite Soil Data</strong> via SoilGrids/Bhuvan API
+                    </div>
+                    <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                        <i class="bi bi-4-circle-fill text-warning me-2"></i>
+                        <strong>ML Models</strong> execute predictive analysis
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+    let map;
+    let marker;
+    const latInput = document.getElementById('{{ magic_form.latitude.id_for_label }}');
+    const lngInput = document.getElementById('{{ magic_form.longitude.id_for_label }}');
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Init Map
+        map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India initially
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Click Event
+        map.on('click', function(e) {
+            placeMarker(e.latlng.lat, e.latlng.lng);
+        });
+    });
+
+    function placeMarker(lat, lng) {
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        marker = L.marker([lat, lng]).addTo(map);
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+        document.getElementById('map-error').classList.add('d-none');
+    }
+
+    function locateUser() {
+        if (navigator.geolocation) {
+            const btn = document.querySelector('button[onclick="locateUser()"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Locating...';
+            btn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 13);
+                    placeMarker(lat, lng);
+                    btn.innerHTML = '<i class="bi bi-crosshair"></i> Use My Location';
+                    btn.disabled = false;
+                },
+                function(error) {
+                    alert("Could not automatically determine location. Please drop a pin on the map.");
+                    btn.innerHTML = '<i class="bi bi-crosshair"></i> Use My Location';
+                    btn.disabled = false;
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+
+    function validateMapSelection() {
+        if (!latInput.value || !lngInput.value) {
+            document.getElementById('map-error').classList.remove('d-none');
+            return false;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing... Please wait (~5s)';
+        btn.disabled = true;
+        return true;
+    }
+</script>
+{% endblock %}
