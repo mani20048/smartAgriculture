@@ -28,9 +28,13 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-m=@=wzj*a#7gs=h3*y8t@7u!*+9+@z(^3*o&9ol_g22)hxkl*7')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'False'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
+ALLOWED_HOSTS = [
+    "smartagriculture-1.onrender.com",
+    "127.0.0.1",
+    "localhost"
+]
 
 
 # Application definition
